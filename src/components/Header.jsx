@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Wifi, WifiOff, Zap, Activity } from 'lucide-react';
 
-export default function Header({ onRefresh, isOnline, lastSync }) {
+export default function Header({ onRefresh, isOnline, lastSync, children }) {
   const [countdown, setCountdown] = useState(12);
   const [spinning, setSpinning] = useState(false);
 
@@ -103,6 +103,7 @@ export default function Header({ onRefresh, isOnline, lastSync }) {
           <RefreshCw size={12} className={spinning ? 'animate-spin' : ''} />
           Force Sync
         </button>
+        {children}
         <div className="text-right text-[9px] leading-relaxed">
           <div className="text-cyan-700 font-bold tracking-widest">ABB ACCELERATOR</div>
           <div className="text-slate-600">HACKATHON 2026</div>

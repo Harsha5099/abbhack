@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { Sparkles } from 'lucide-react';
 import Header from './components/Header';
 import PodSidebar from './components/PodSidebar';
 import PodDetail from './components/PodDetail';
@@ -6,6 +7,7 @@ import NeuralChat from './components/NeuralChat';
 import ClusterOverview from './components/ClusterOverview';
 import AnomalyTimeline from './components/AnomalyTimeline';
 import PodHealthTable from './components/PodHealthTable';
+import DemoPage from './demo/DemoPage';
 import { fetchPods, analyzePod, fetchBlastRadius, fetchHistory } from './api/endpoints';
 
 const VIEWS = [
@@ -15,14 +17,16 @@ const VIEWS = [
 ];
 
 export default function App() {
-  // ── Pods ────────────────────────────────────────────────────────────────────
+  const [demoMode, setDemoMode] = useState(false);
+
+  // ── Pods ─────────────────────────────────────────────────────────────────────
   const [pods, setPods]               = useState([]);
   const [podsLoading, setPodsLoading] = useState(true);
   const [podsError, setPodsError]     = useState(null);
   const [isOnline, setIsOnline]       = useState(false);
   const [lastSync, setLastSync]       = useState(null);
 
-  // ── Selected pod ────────────────────────────────────────────────────────────
+  // ── Selected pod ─────────────────────────────────────────────────────────────
   const [selectedPod, setSelectedPod]         = useState(null);
   const [analysis, setAnalysis]               = useState(null);
   const [blastRadius, setBlastRadius]         = useState(null);
@@ -31,11 +35,9 @@ export default function App() {
   const [loadingBlast, setLoadingBlast]       = useState(false);
   const [loadingHistory, setLoadingHistory]   = useState(false);
   const [analysisError, setAnalysisError]     = useState(null);
+  const [activeView, setActiveView]           = useState('detail');
 
-  // ── View ────────────────────────────────────────────────────────────────────
-  const [activeView, setActiveView] = useState('detail');
-
-  // ── Load pods ───────────────────────────────────────────────────────────────
+  // ── Load pods ─────────────────────────────────────────────────────────────────
   const loadPods = useCallback(async () => {
     try {
       const list = await fetchPods();
@@ -53,7 +55,7 @@ export default function App() {
 
   useEffect(() => { loadPods(); }, [loadPods]);
 
-  // ── Load pod details ────────────────────────────────────────────────────────
+  // ── Load pod details ──────────────────────────────────────────────────────────
   const loadPodDetails = useCallback(async (pod) => {
     if (!pod?.name) return;
     setLoadingAnalysis(true);
@@ -69,11 +71,8 @@ export default function App() {
       fetchBlastRadius(pod.name),
       fetchHistory(pod.name),
     ]).then(([aRes, bRes, hRes]) => {
-      if (aRes.status === 'fulfilled') {
-        setAnalysis(aRes.value);
-      } else {
-        setAnalysisError(aRes.reason?.message || 'Analysis failed');
-      }
+      if (aRes.status === 'fulfilled') setAnalysis(aRes.value);
+      else setAnalysisError(aRes.reason?.message || 'Analysis failed');
       if (bRes.status === 'fulfilled') setBlastRadius(bRes.value);
       if (hRes.status === 'fulfilled') setHistory(hRes.value);
       setLoadingAnalysis(false);
@@ -88,11 +87,25 @@ export default function App() {
     setActiveView('detail');
   }, [loadPodDetails]);
 
+  // ── Demo mode — full page takeover ────────────────────────────────────────────
+  if (demoMode) {
+    return <DemoPage onExit={() => setDemoMode(false)} />;
+  }
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden grid-bg">
 
       {/* Header */}
-      <Header onRefresh={loadPods} isOnline={isOnline} lastSync={lastSync} />
+      <Header onRefresh={loadPods} isOnline={isOnline} lastSync={lastSync}>
+        {/* Demo button injected into header via children */}
+        <button
+          onClick={() => setDemoMode(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-500/50 bg-purple-950/40 text-purple-300 text-[11px] font-bold uppercase tracking-widest hover:border-purple-400 hover:bg-purple-900/50 transition-all animate-pulse-glow"
+        >
+          <Sparkles size={13} />
+          Demo Mode
+        </button>
+      </Header>
 
       {/* Cluster overview */}
       {pods.length > 0 && <ClusterOverview pods={pods} />}
@@ -104,8 +117,6 @@ export default function App() {
 
       {/* Main body */}
       <div className="flex flex-1 overflow-hidden min-h-0">
-
-        {/* Sidebar */}
         <PodSidebar
           pods={pods}
           loading={podsLoading}
@@ -114,21 +125,16 @@ export default function App() {
           onSelect={handleSelectPod}
         />
 
-        {/* Right panel */}
         <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-
           {/* View tabs */}
           <div className="flex items-center border-b border-slate-800/60 px-4 shrink-0 bg-slate-950/40">
             {VIEWS.map(({ id, label }) => (
-              <button
-                key={id}
-                onClick={() => setActiveView(id)}
+              <button key={id} onClick={() => setActiveView(id)}
                 className={`px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all border-b-2 ${
                   activeView === id
                     ? 'border-cyan-400 text-cyan-400'
                     : 'border-transparent text-slate-500 hover:text-slate-300'
-                }`}
-              >
+                }`}>
                 {label}
               </button>
             ))}
@@ -156,11 +162,7 @@ export default function App() {
             )}
             {activeView === 'table' && (
               <div className="h-full overflow-y-auto py-3">
-                <PodHealthTable
-                  pods={pods}
-                  onSelect={handleSelectPod}
-                  selectedPod={selectedPod}
-                />
+                <PodHealthTable pods={pods} onSelect={handleSelectPod} selectedPod={selectedPod} />
               </div>
             )}
             {activeView === 'chat' && (
