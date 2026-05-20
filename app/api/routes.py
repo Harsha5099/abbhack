@@ -115,7 +115,16 @@ def analyze_pod(pod: str):
 
             "ai_summary": orchestration["ai_summary"],
 
+            "estimated_cost": estimated_cost,
+
             "estimated_cost_usd": estimated_cost,
+
+            "agent_analysis": {
+                "cpu_agent":     str(orchestration["agents"]["cpu"].get("issue", "")),
+                "memory_agent":  str(orchestration["agents"]["memory"].get("issue", "")),
+                "network_agent": str(orchestration["agents"]["network"].get("issue", "")),
+                "log_agent":     str(orchestration["agents"]["logs"].get("issue", "")),
+            },
 
             "agents": orchestration["agents"]
         }
@@ -165,17 +174,23 @@ def blast_radius(pod: str):
 
     try:
 
-        affected = calculate_blast_radius(
-            pod
-        )
+        affected = calculate_blast_radius(pod)
+
+        count = len(affected)
+        if count >= 4:
+            impact = "Critical"
+        elif count >= 2:
+            impact = "High"
+        elif count == 1:
+            impact = "Medium"
+        else:
+            impact = "Low"
 
         return {
-
             "failed_pod": pod,
-
             "affected_services": affected,
-
-            "impact_level": len(affected)
+            "impact_level": impact,
+            "affected_count": count,
         }
 
     except Exception as e:
